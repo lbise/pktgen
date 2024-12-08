@@ -1,0 +1,104 @@
+# Packet description for DM (Roger) protocol
+# These descriptions only describe the packet payloads, the fields set by the radio
+# like preamble and address are omitted.
+#
+# Sizes are defined in number of bits
+# Packets are defined MSB first, the first field will be placed at MSB.
+# Other fields will follow
+
+DmHeader:
+  deftype: "definition"
+  description: "Header added to every DM packet"
+  fields:
+    - name: "Frame type"
+      description: "Defines the type of packet"
+      size: 4
+      values:
+        0: "Undefined"
+        1: "Paging frame"
+        2: "Beacon frame"
+        3: "State Indication frame"
+        4: "Signaling frame"
+        5: "FHS frame"
+    - name: "Protocol version"
+      description: "Protocol version"
+      size: 4
+      values:
+        0: "PWP v1.0"
+        1: "PWP v1.1"
+        2: "PWP v2.0"
+        3: "PWP v1.2"
+        4: "PWP v2.1"
+        5: "PWP v3.0"
+
+FHS:
+  deftype: "packet"
+  description: "Frequency Hopping Synchronization frame"
+  fields:
+    - reference: "DmHeader"
+    - name: "TDMA sequence number"
+      size: 16
+      # How to handle this shit?
+    - name: "Hop Level"
+      size: 2
+    - name: "Beacon frequency"
+      size: 6
+    - name: "Hop Level"
+      size: 2
+    - name: "Beacon effective frequency"
+      size: 6
+    - name: "Next beacon time"
+      description: "Number of us to the next beacon"
+      size: 16
+
+
+
+      #Beacon:
+      #  deftype: "packet"
+      #  fields:
+      #    - reference: "Header"
+      #    - name: "Link info"
+      #      type: "structure"
+      #      fields:
+      #        - name: "Mixing mode"
+      #          size: 2
+      #          values:
+      #            0: "No mixing"
+      #            1: "Mixing primary"
+      #            2: "Mixing secondary"
+      #            3: "Reserved"
+      #        - name: "Encryption"
+      #          size: 1
+      #          values:
+      #            0: "Enabled"
+      #            1: "Disabled"
+      #        - name: "Link type"
+      #          size: 5
+      #          values:
+      #            0: "Undefined"
+      #            1: "4ms period 3 channels"
+      #            2: "4ms period 40 channels"
+      #            3: "3.75ms period 3 channels"
+      #            4: "3.75ms period 40 channels"
+      #            5: "4ms period fixed channel"       # Fixed 2.402GHz channel
+      #            6: "4ms period 40 channels stereo"  # PWP 3.0
+      #        - name: "TDMA sequence number"
+      #          size: 16
+      #        - name: "Hopping scheme"
+      #          size: 1
+      #          values:
+      #            0: "Legacy scheme"
+      #            1: "Permutations scheme"
+      #        - name: "Reserved"
+      #          size: 1
+      #        - name: "Beacon frequency"
+      #          size: 6
+      #        - name: "Channel map"
+      #          size: 40
+      #
+      #
+      #
+      #
+      #
+      #
+      #
