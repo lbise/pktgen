@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+from collections import defaultdict
 
 import yaml
 
@@ -13,6 +14,7 @@ class PacketField:
         self.size = size
         self.byte_offset = byte_offset
         self.bit_offset = bit_offset
+        self.subfields = []
 
     def __repr__(self):
         repr = f"{self.__class__.__name__}: {self.name} {self.description} size={self.size} byte_offset={self.byte_offset} bit_offset={self.bit_offset}"
@@ -66,6 +68,29 @@ class PacketField:
         )
         return content
 
+    def generate_macros_multi_bits(self, packet, macro_name, fields):
+        content = []
+        tot_size = self.size
+
+        breakpoint()
+        for i, field in enumerate(fields):
+            cont, macro = field.generate_byte_offset(packet, macro_name, suffix=str(i))
+            content.extend(cont)
+            tot_size += field.size
+
+        return content, tot_size
+
+    def generate_byte_offset(self, packet, macro_name, suffix=None):
+        content = []
+        byte_offset_macro = (
+            f"{packet.prefix}_{packet.name.upper()}_{macro_name}_BYTE_OFFSET"
+        )
+        if suffix:
+            byte_offset_macro += '_' + suffix
+
+        content.append(f"#define {byte_offset_macro} {self.byte_offset}")
+        return content, byte_offset_macro
+
     def generate(self, packet):
         content = []
 
@@ -74,12 +99,16 @@ class PacketField:
             content.extend(self.generate_enum(packet))
 
         macro_name = self.name.replace(" ", "_").upper()
-        byte_offset_macro = (
-            f"{packet.prefix}_{packet.name.upper()}_{macro_name}_BYTE_OFFSET"
-        )
-        content.append(f"#define {byte_offset_macro} {self.byte_offset}")
 
-        if self.bit_offset is not None:
+        cont, byte_offset_macro = self.generate_byte_offset(packet, macro_name)
+        content.extend(cont)
+
+        if self.subfields:
+            # Several fields are merged into a single macro
+            cont, size = self.generate_macros_multi_bits(packet, macro_name, self.subfields)
+            content.extend(cont)
+            size_str = f"{size}bits"
+        elif self.bit_offset is not None:
             # Field is smaller than a byte
             content.extend(
                 self.generate_macros_bits(packet, macro_name, byte_offset_macro)
@@ -132,6 +161,24 @@ class Packet:
 
         return None
 
+    def merge_fields(self):
+        name_groups = defaultdict(list)
+
+        for field in self.fields:
+            name_groups[field.name].append(field)
+
+        multiple_defs = {name: group for name, group in name_groups.items() if len(group) > 1}
+        for field_name in multiple_defs:
+            first = None
+            for field in multiple_defs[field_name]:
+                if first:
+                    # Append field to first one
+                    first.subfields.append(field)
+                    # Remove field
+                    self.fields.remove(field)
+                else:
+                    first = field
+
     def process_fields(self, fields, all_packets):
         for field in fields:
             name = field.get("name", None)
@@ -165,6 +212,9 @@ class Packet:
                 self.update_offsets(size)
 
                 self.fields.append(field)
+
+        # Merge fields with the same
+        self.merge_fields()
 
     def generate(self):
         content = []
